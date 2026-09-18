@@ -1,0 +1,89 @@
+schema: '2.0'
+stages:
+  ingestion:
+    cmd: python src/data_ingestion.py
+    deps:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: e5362c3e5787dadd4e21eb606509bc03
+      size: 131728
+    - path: src/data_ingestion.py
+      hash: md5
+      md5: 0909f7e193e2a765cfb730b39859e3cf
+      size: 883
+  preprocessing:
+    cmd: python src/preprocessing.py
+    deps:
+    - path: data/raw/churn.csv
+      hash: md5
+      md5: e5362c3e5787dadd4e21eb606509bc03
+      size: 131728
+    - path: src/preprocessing.py
+      hash: md5
+      md5: fd2c57d01e94589e3c36ee37e57917d3
+      size: 8838
+    outs:
+    - path: data/processed/X_test.csv
+      hash: md5
+      md5: 3b498aa06b6ad30b6b3af1d4238cd6a7
+      size: 23042
+    - path: data/processed/X_train.csv
+      hash: md5
+      md5: 9ec75d3e4f134adbec8dd8e2ce1abd36
+      size: 91355
+    - path: data/processed/y_test.csv
+      hash: md5
+      md5: 11d70f722fb41f82567ba04b2cf1de71
+      size: 1717
+    - path: data/processed/y_train.csv
+      hash: md5
+      md5: 4b98a3b3df7feb74143e9550589ebb3c
+      size: 6847
+    - path: models/preprocessor.pkl
+      hash: md5
+      md5: 00245f71eaf5ffb5afd8e4be4ee41bd6
+      size: 411
+  train:
+    cmd: python src/train.py
+    deps:
+    - path: data/processed/X_train.csv
+      hash: md5
+      md5: 9ec75d3e4f134adbec8dd8e2ce1abd36
+      size: 91355
+    - path: data/processed/y_train.csv
+      hash: md5
+      md5: 4b98a3b3df7feb74143e9550589ebb3c
+      size: 6847
+    - path: src/train.py
+      hash: md5
+      md5: b5e8e805a99655de5b6688dbecfe4047
+      size: 5160
+    outs:
+    - path: models/random_forest.pkl
+      hash: md5
+      md5: b1e5a806989eedf3bfc1194c78263274
+      size: 2192297
+  evaluate:
+    cmd: python src/evaluate.py
+    deps:
+    - path: data/processed/X_test.csv
+      hash: md5
+      md5: 3b498aa06b6ad30b6b3af1d4238cd6a7
+      size: 23042
+    - path: data/processed/y_test.csv
+      hash: md5
+      md5: 11d70f722fb41f82567ba04b2cf1de71
+      size: 1717
+    - path: models/random_forest.pkl
+      hash: md5
+      md5: b1e5a806989eedf3bfc1194c78263274
+      size: 2192297
+    - path: src/evaluate.py
+      hash: md5
+      md5: 5ce3bbd54dfa988b0e55aba8aafa7b0a
+      size: 8160
+    outs:
+    - path: reports/metrics.json
+      hash: md5
+      md5: 3db4de35020222ce744eacf7d2089781
+      size: 125

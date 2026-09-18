@@ -8,22 +8,12 @@ __pycache__/
 # Jupyter
 .ipynb_checkpoints/
 
-# Data
-data/raw/*
-data/processed/*
-
-# Models
-models/*
-
-# MLflow
-mlruns/
-
 # DVC cache
 .dvc/cache/
+
+# Environment variables
+.env
 
 # OS
 .DS_Store
 Thumbs.db
-
-# Environment variables
-.env
