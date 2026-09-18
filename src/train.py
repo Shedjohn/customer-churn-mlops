@@ -1,9 +1,18 @@
 from pathlib import Path
 
 import joblib
+import mlflow
+import mlflow.sklearn
 import pandas as pd
 
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import (
+    accuracy_score,
+    precision_score,
+    recall_score,
+    f1_score,
+    roc_auc_score
+)
 
 
 # ============================================================
@@ -11,10 +20,14 @@ from sklearn.ensemble import RandomForestClassifier
 # ============================================================
 
 PROCESSED_DATA_PATH = Path("data/processed")
-
-PREPROCESSOR_PATH = Path("models/preprocessor.pkl")
-
 MODEL_PATH = Path("models/random_forest.pkl")
+
+
+# ============================================================
+# MLflow SETTINGS
+# ============================================================
+
+MLFLOW_EXPERIMENT_NAME = "Customer Churn Prediction"
 
 
 # ============================================================
@@ -22,7 +35,6 @@ MODEL_PATH = Path("models/random_forest.pkl")
 # ============================================================
 
 RANDOM_STATE = 42
-
 N_ESTIMATORS = 100
 
 
@@ -31,17 +43,13 @@ N_ESTIMATORS = 100
 # ============================================================
 
 def load_processed_data():
-    """
-    Load the training and testing datasets created
-    during preprocessing.
-    """
+    """Load training and testing datasets."""
 
     X_train_path = PROCESSED_DATA_PATH / "X_train.csv"
     X_test_path = PROCESSED_DATA_PATH / "X_test.csv"
     y_train_path = PROCESSED_DATA_PATH / "y_train.csv"
     y_test_path = PROCESSED_DATA_PATH / "y_test.csv"
 
-    # Check that all required files exist
     required_files = [
         X_train_path,
         X_test_path,
@@ -52,18 +60,26 @@ def load_processed_data():
     for file_path in required_files:
         if not file_path.exists():
             raise FileNotFoundError(
-                f"Required processed file not found: "
-                f"{file_path}"
+                f"Required processed file not found: {file_path}"
             )
 
-    # Load datasets
     X_train = pd.read_csv(X_train_path)
     X_test = pd.read_csv(X_test_path)
 
-    y_train = pd.read_csv(y_train_path).squeeze()
-    y_test = pd.read_csv(y_test_path).squeeze()
+    y_train = pd.read_csv(
+        y_train_path
+    ).squeeze()
 
-    return X_train, X_test, y_train, y_test
+    y_test = pd.read_csv(
+        y_test_path
+    ).squeeze()
+
+    return (
+        X_train,
+        X_test,
+        y_train,
+        y_test
+    )
 
 
 # ============================================================
@@ -71,12 +87,7 @@ def load_processed_data():
 # ============================================================
 
 def create_model():
-    """
-    Create the Random Forest classifier.
-
-    Random Forest was selected as our final model
-    from the models evaluated during the Colab stage.
-    """
+    """Create the Random Forest classifier."""
 
     model = RandomForestClassifier(
         n_estimators=N_ESTIMATORS,
@@ -91,9 +102,7 @@ def create_model():
 # ============================================================
 
 def train_model(model, X_train, y_train):
-    """
-    Train the Random Forest model using the training data.
-    """
+    """Train Random Forest."""
 
     model.fit(
         X_train,
@@ -104,13 +113,66 @@ def train_model(model, X_train, y_train):
 
 
 # ============================================================
+# EVALUATE MODEL
+# ============================================================
+
+def evaluate_model(
+    model,
+    X_test,
+    y_test
+):
+    """
+    Generate predictions and calculate
+    evaluation metrics.
+    """
+
+    y_pred = model.predict(
+        X_test
+    )
+
+    y_probability = model.predict_proba(
+        X_test
+    )[:, 1]
+
+    metrics = {
+        "accuracy": accuracy_score(
+            y_test,
+            y_pred
+        ),
+
+        "precision": precision_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        ),
+
+        "recall": recall_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        ),
+
+        "f1_score": f1_score(
+            y_test,
+            y_pred,
+            zero_division=0
+        ),
+
+        "roc_auc": roc_auc_score(
+            y_test,
+            y_probability
+        )
+    }
+
+    return metrics
+
+
+# ============================================================
 # SAVE MODEL
 # ============================================================
 
 def save_model(model):
-    """
-    Save the trained Random Forest model to disk.
-    """
+    """Save trained Random Forest."""
 
     MODEL_PATH.parent.mkdir(
         parents=True,
@@ -128,18 +190,25 @@ def save_model(model):
 
 
 # ============================================================
-# MAIN TRAINING PIPELINE
+# MAIN
 # ============================================================
 
 def main():
 
     print("=" * 60)
-    print("RANDOM FOREST MODEL TRAINING")
+    print("RANDOM FOREST TRAINING WITH MLFLOW")
     print("=" * 60)
 
+    # --------------------------------------------------------
+    # Configure MLflow experiment
+    # --------------------------------------------------------
+
+    mlflow.set_experiment(
+        MLFLOW_EXPERIMENT_NAME
+    )
 
     # --------------------------------------------------------
-    # 1. Load processed data
+    # Load processed data
     # --------------------------------------------------------
 
     (
@@ -156,69 +225,134 @@ def main():
     )
 
     print(
-        f"X_test shape:  {X_test.shape}"
+        f"X_test shape: {X_test.shape}"
     )
 
-    print(
-        f"y_train shape: {y_train.shape}"
-    )
-
-    print(
-        f"y_test shape:  {y_test.shape}"
-    )
-
-
     # --------------------------------------------------------
-    # 2. Create Random Forest
+    # Start MLflow run
     # --------------------------------------------------------
 
-    model = create_model()
+    with mlflow.start_run():
 
-    print("\nRandom Forest configuration:")
+        # ----------------------------------------------------
+        # Create model
+        # ----------------------------------------------------
 
-    print(
-        f"Number of trees: {N_ESTIMATORS}"
-    )
+        model = create_model()
 
-    print(
-        f"Random state: {RANDOM_STATE}"
-    )
+        # ----------------------------------------------------
+        # Log model parameters
+        # ----------------------------------------------------
 
+        mlflow.log_param(
+            "model_type",
+            "RandomForestClassifier"
+        )
 
-    # --------------------------------------------------------
-    # 3. Train model
-    # --------------------------------------------------------
+        mlflow.log_param(
+            "n_estimators",
+            N_ESTIMATORS
+        )
 
-    print("\nTraining Random Forest...")
+        mlflow.log_param(
+            "random_state",
+            RANDOM_STATE
+        )
 
-    model = train_model(
-        model,
-        X_train,
-        y_train
-    )
+        # ----------------------------------------------------
+        # Train model
+        # ----------------------------------------------------
 
-    print("Training completed.")
+        print("\nTraining Random Forest...")
 
+        model = train_model(
+            model,
+            X_train,
+            y_train
+        )
 
-    # --------------------------------------------------------
-    # 4. Save model
-    # --------------------------------------------------------
+        print("Training completed.")
 
-    save_model(model)
+        # ----------------------------------------------------
+        # Evaluate model
+        # ----------------------------------------------------
 
+        metrics = evaluate_model(
+            model,
+            X_test,
+            y_test
+        )
 
-    # --------------------------------------------------------
-    # Finished
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # Log metrics to MLflow
+        # ----------------------------------------------------
+
+        mlflow.log_metrics(
+            metrics
+        )
+
+        # ----------------------------------------------------
+        # Print metrics
+        # ----------------------------------------------------
+
+        print("\nEvaluation Metrics:")
+        print("-" * 30)
+
+        print(
+            f"Accuracy : {metrics['accuracy']:.4f}"
+        )
+
+        print(
+            f"Precision: {metrics['precision']:.4f}"
+        )
+
+        print(
+            f"Recall   : {metrics['recall']:.4f}"
+        )
+
+        print(
+            f"F1-score : {metrics['f1_score']:.4f}"
+        )
+
+        print(
+            f"ROC-AUC  : {metrics['roc_auc']:.4f}"
+        )
+
+        # ----------------------------------------------------
+        # Save model locally
+        # ----------------------------------------------------
+
+        save_model(model)
+
+        # ----------------------------------------------------
+        # Log model to MLflow
+        # ----------------------------------------------------
+
+        mlflow.sklearn.log_model(
+            sk_model=model,
+            name="random_forest_model",
+            skops_trusted_types=[
+                "sklearn.tree._tree.Tree"
+            ]
+        )
+
+        # ----------------------------------------------------
+        # Display run information
+        # ----------------------------------------------------
+
+        run_id = mlflow.active_run().info.run_id
+
+        print("\nMLflow run completed.")
+
+        print(
+            f"Run ID: {run_id}"
+        )
 
     print("\n" + "=" * 60)
-    print("MODEL TRAINING COMPLETED SUCCESSFULLY")
+    print("TRAINING + MLFLOW COMPLETED SUCCESSFULLY")
     print("=" * 60)
 
 
-# ============================================================
-# RUN SCRIPT
-# ============================================================
-
 if __name__ == "__main__":
     main()
+
