@@ -56,8 +56,8 @@ stages:
       size: 6847
     - path: src/train.py
       hash: md5
-      md5: b5e8e805a99655de5b6688dbecfe4047
-      size: 5160
+      md5: 703fab4285ccce999b7c53e2e18b9523
+      size: 8362
     outs:
     - path: models/random_forest.pkl
       hash: md5

@@ -20,14 +20,21 @@ from sklearn.metrics import (
 # ============================================================
 
 PROCESSED_DATA_PATH = Path("data/processed")
+
 MODEL_PATH = Path("models/random_forest.pkl")
 
+REPORTS_PATH = Path("reports")
+
+METRICS_PATH = REPORTS_PATH / "metrics.json"
+
 
 # ============================================================
-# MLflow SETTINGS
+# MLFLOW CONFIGURATION
 # ============================================================
 
-MLFLOW_EXPERIMENT_NAME = "Customer Churn Prediction"
+MLFLOW_TRACKING_URI = "http://localhost:5000"
+
+EXPERIMENT_NAME = "Customer Churn Prediction"
 
 
 # ============================================================
@@ -35,6 +42,7 @@ MLFLOW_EXPERIMENT_NAME = "Customer Churn Prediction"
 # ============================================================
 
 RANDOM_STATE = 42
+
 N_ESTIMATORS = 100
 
 
@@ -43,12 +51,23 @@ N_ESTIMATORS = 100
 # ============================================================
 
 def load_processed_data():
-    """Load training and testing datasets."""
+    """Load training and testing data."""
 
-    X_train_path = PROCESSED_DATA_PATH / "X_train.csv"
-    X_test_path = PROCESSED_DATA_PATH / "X_test.csv"
-    y_train_path = PROCESSED_DATA_PATH / "y_train.csv"
-    y_test_path = PROCESSED_DATA_PATH / "y_test.csv"
+    X_train_path = (
+        PROCESSED_DATA_PATH / "X_train.csv"
+    )
+
+    X_test_path = (
+        PROCESSED_DATA_PATH / "X_test.csv"
+    )
+
+    y_train_path = (
+        PROCESSED_DATA_PATH / "y_train.csv"
+    )
+
+    y_test_path = (
+        PROCESSED_DATA_PATH / "y_test.csv"
+    )
 
     required_files = [
         X_train_path,
@@ -58,13 +77,21 @@ def load_processed_data():
     ]
 
     for file_path in required_files:
+
         if not file_path.exists():
+
             raise FileNotFoundError(
-                f"Required processed file not found: {file_path}"
+                f"Required processed file not found: "
+                f"{file_path}"
             )
 
-    X_train = pd.read_csv(X_train_path)
-    X_test = pd.read_csv(X_test_path)
+    X_train = pd.read_csv(
+        X_train_path
+    )
+
+    X_test = pd.read_csv(
+        X_test_path
+    )
 
     y_train = pd.read_csv(
         y_train_path
@@ -87,26 +114,16 @@ def load_processed_data():
 # ============================================================
 
 def create_model():
-    """Create the Random Forest classifier."""
+
+    """
+    Create the Random Forest model.
+    """
 
     model = RandomForestClassifier(
+
         n_estimators=N_ESTIMATORS,
+
         random_state=RANDOM_STATE
-    )
-
-    return model
-
-
-# ============================================================
-# TRAIN MODEL
-# ============================================================
-
-def train_model(model, X_train, y_train):
-    """Train Random Forest."""
-
-    model.fit(
-        X_train,
-        y_train
     )
 
     return model
@@ -121,6 +138,7 @@ def evaluate_model(
     X_test,
     y_test
 ):
+
     """
     Generate predictions and calculate
     evaluation metrics.
@@ -134,34 +152,45 @@ def evaluate_model(
         X_test
     )[:, 1]
 
+    accuracy = accuracy_score(
+        y_test,
+        y_pred
+    )
+
+    precision = precision_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    recall = recall_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    f1 = f1_score(
+        y_test,
+        y_pred,
+        zero_division=0
+    )
+
+    roc_auc = roc_auc_score(
+        y_test,
+        y_probability
+    )
+
     metrics = {
-        "accuracy": accuracy_score(
-            y_test,
-            y_pred
-        ),
 
-        "precision": precision_score(
-            y_test,
-            y_pred,
-            zero_division=0
-        ),
+        "accuracy": accuracy,
 
-        "recall": recall_score(
-            y_test,
-            y_pred,
-            zero_division=0
-        ),
+        "precision": precision,
 
-        "f1_score": f1_score(
-            y_test,
-            y_pred,
-            zero_division=0
-        ),
+        "recall": recall,
 
-        "roc_auc": roc_auc_score(
-            y_test,
-            y_probability
-        )
+        "f1_score": f1,
+
+        "roc_auc": roc_auc
     }
 
     return metrics
@@ -172,6 +201,7 @@ def evaluate_model(
 # ============================================================
 
 def save_model(model):
+
     """Save trained Random Forest."""
 
     MODEL_PATH.parent.mkdir(
@@ -190,25 +220,81 @@ def save_model(model):
 
 
 # ============================================================
-# MAIN
+# SAVE METRICS
+# ============================================================
+
+def save_metrics(metrics):
+
+    """Save metrics to JSON."""
+
+    import json
+
+    REPORTS_PATH.mkdir(
+        parents=True,
+        exist_ok=True
+    )
+
+    with open(
+        METRICS_PATH,
+        "w"
+    ) as file:
+
+        json.dump(
+            {
+                key: round(
+                    float(value),
+                    4
+                )
+                for key, value
+                in metrics.items()
+            },
+            file,
+            indent=4
+        )
+
+    print(
+        f"Metrics saved to: {METRICS_PATH}"
+    )
+
+
+# ============================================================
+# MAIN TRAINING PIPELINE
 # ============================================================
 
 def main():
 
     print("=" * 60)
-    print("RANDOM FOREST TRAINING WITH MLFLOW")
+
+    print(
+        "RANDOM FOREST TRAINING WITH MLFLOW"
+    )
+
     print("=" * 60)
 
     # --------------------------------------------------------
-    # Configure MLflow experiment
+    # CONNECT TO MLFLOW
     # --------------------------------------------------------
 
+    mlflow.set_tracking_uri(
+        MLFLOW_TRACKING_URI
+    )
+
     mlflow.set_experiment(
-        MLFLOW_EXPERIMENT_NAME
+        EXPERIMENT_NAME
+    )
+
+    print(
+        f"\nMLflow tracking URI: "
+        f"{mlflow.get_tracking_uri()}"
+    )
+
+    print(
+        f"MLflow experiment: "
+        f"{EXPERIMENT_NAME}"
     )
 
     # --------------------------------------------------------
-    # Load processed data
+    # LOAD DATA
     # --------------------------------------------------------
 
     (
@@ -218,63 +304,69 @@ def main():
         y_test
     ) = load_processed_data()
 
-    print("\nProcessed data loaded.")
+    print(
+        "\nProcessed data loaded."
+    )
 
     print(
         f"X_train shape: {X_train.shape}"
     )
 
     print(
-        f"X_test shape: {X_test.shape}"
+        f"X_test shape:  {X_test.shape}"
     )
 
     # --------------------------------------------------------
-    # Start MLflow run
+    # START MLFLOW RUN
     # --------------------------------------------------------
 
-    with mlflow.start_run():
+    with mlflow.start_run(
+        run_name="Random Forest Baseline"
+    ) as run:
+
+        print(
+            f"\nMLflow Run ID: "
+            f"{run.info.run_id}"
+        )
 
         # ----------------------------------------------------
-        # Create model
+        # CREATE MODEL
         # ----------------------------------------------------
 
         model = create_model()
 
         # ----------------------------------------------------
-        # Log model parameters
+        # LOG PARAMETERS
         # ----------------------------------------------------
 
-        mlflow.log_param(
-            "model_type",
-            "RandomForestClassifier"
-        )
+        mlflow.log_params({
 
-        mlflow.log_param(
-            "n_estimators",
-            N_ESTIMATORS
-        )
+            "model": "RandomForestClassifier",
 
-        mlflow.log_param(
-            "random_state",
-            RANDOM_STATE
-        )
+            "n_estimators": N_ESTIMATORS,
+
+            "random_state": RANDOM_STATE
+        })
 
         # ----------------------------------------------------
-        # Train model
+        # TRAIN MODEL
         # ----------------------------------------------------
 
-        print("\nTraining Random Forest...")
+        print(
+            "\nTraining Random Forest..."
+        )
 
-        model = train_model(
-            model,
+        model.fit(
             X_train,
             y_train
         )
 
-        print("Training completed.")
+        print(
+            "Training completed."
+        )
 
         # ----------------------------------------------------
-        # Evaluate model
+        # EVALUATE
         # ----------------------------------------------------
 
         metrics = evaluate_model(
@@ -284,7 +376,7 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Log metrics to MLflow
+        # LOG METRICS
         # ----------------------------------------------------
 
         mlflow.log_metrics(
@@ -292,67 +384,91 @@ def main():
         )
 
         # ----------------------------------------------------
-        # Print metrics
+        # DISPLAY METRICS
         # ----------------------------------------------------
 
-        print("\nEvaluation Metrics:")
+        print(
+            "\nEvaluation Metrics:"
+        )
+
         print("-" * 30)
 
-        print(
-            f"Accuracy : {metrics['accuracy']:.4f}"
-        )
+        for name, value in metrics.items():
 
-        print(
-            f"Precision: {metrics['precision']:.4f}"
-        )
+            print(
+                f"{name}: {value:.4f}"
+            )
 
-        print(
-            f"Recall   : {metrics['recall']:.4f}"
-        )
+        # ----------------------------------------------------
+        # SAVE LOCAL MODEL
+        # ----------------------------------------------------
 
-        print(
-            f"F1-score : {metrics['f1_score']:.4f}"
-        )
-
-        print(
-            f"ROC-AUC  : {metrics['roc_auc']:.4f}"
+        save_model(
+            model
         )
 
         # ----------------------------------------------------
-        # Save model locally
+        # SAVE LOCAL METRICS
         # ----------------------------------------------------
 
-        save_model(model)
+        save_metrics(
+            metrics
+        )
 
         # ----------------------------------------------------
-        # Log model to MLflow
+        # LOG MODEL TO MLFLOW
         # ----------------------------------------------------
 
         mlflow.sklearn.log_model(
-            sk_model=model,
+            model,
             name="random_forest_model",
-            skops_trusted_types=[
-                "sklearn.tree._tree.Tree"
-            ]
+            skops_trusted_types=["sklearn.tree._tree.Tree"]
         )
 
         # ----------------------------------------------------
-        # Display run information
+        # LOG METRICS FILE
         # ----------------------------------------------------
 
-        run_id = mlflow.active_run().info.run_id
+        mlflow.log_artifact(
+            str(METRICS_PATH)
+        )
 
-        print("\nMLflow run completed.")
+        # ----------------------------------------------------
+        # ADD TAGS
+        # ----------------------------------------------------
+
+        mlflow.set_tags({
+
+            "project": "Customer Churn Prediction",
+
+            "model_type": "Random Forest",
+
+            "dataset": "Customer Churn Dataset",
+
+            "stage": "baseline"
+        })
 
         print(
-            f"Run ID: {run_id}"
+            "\nMLflow logging completed."
         )
 
-    print("\n" + "=" * 60)
-    print("TRAINING + MLFLOW COMPLETED SUCCESSFULLY")
-    print("=" * 60)
+    print(
+        "\n" + "=" * 60
+    )
 
+    print(
+        "TRAINING AND MLFLOW RUN COMPLETED"
+    )
+
+    print(
+        "=" * 60
+    )
+
+
+# ============================================================
+# ENTRY POINT
+# ============================================================
 
 if __name__ == "__main__":
-    main()
 
+    main()
