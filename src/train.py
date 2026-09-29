@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import os
 import joblib
 import mlflow
 import mlflow.sklearn
@@ -32,7 +33,10 @@ METRICS_PATH = REPORTS_PATH / "metrics.json"
 # MLFLOW CONFIGURATION
 # ============================================================
 
-MLFLOW_TRACKING_URI = "http://localhost:5000"
+MLFLOW_TRACKING_URI = os.getenv(
+    "MLFLOW_TRACKING_URI",
+    "http://localhost:5000"
+)
 
 EXPERIMENT_NAME = "Customer Churn Prediction"
 

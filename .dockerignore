@@ -1,0 +1,32 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+.venv/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# DVC
+.dvc/
+.dvc/cache/
+
+# MLflow local files
+mlruns/
+mlflow.db
+
+# Environment
+.env
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Development files
+tests/
