@@ -2,7 +2,7 @@ name: Churn Prediction CI
 
 
 # ============================================================
-# WHEN SHOULD THE WORKFLOW RUN?
+# TRIGGERS
 # ============================================================
 
 on:
@@ -22,6 +22,10 @@ on:
 
 jobs:
 
+  # ==========================================================
+  # TEST JOB
+  # ==========================================================
+
   test:
 
     name: Test ML Pipeline
@@ -30,18 +34,10 @@ jobs:
 
     steps:
 
-      # ------------------------------------------------------
-      # CHECKOUT
-      # ------------------------------------------------------
-
       - name: Checkout repository
 
         uses: actions/checkout@v4
 
-
-      # ------------------------------------------------------
-      # PYTHON
-      # ------------------------------------------------------
 
       - name: Set up Python
 
@@ -51,10 +47,6 @@ jobs:
 
           python-version: "3.12"
 
-
-      # ------------------------------------------------------
-      # INSTALL DEPENDENCIES
-      # ------------------------------------------------------
 
       - name: Install dependencies
 
@@ -67,12 +59,46 @@ jobs:
           pip install pytest
 
 
-      # ------------------------------------------------------
-      # RUN TESTS
-      # ------------------------------------------------------
-
       - name: Run tests
 
         run: |
 
           pytest
+
+
+  # ==========================================================
+  # DOCKER BUILD JOB
+  # ==========================================================
+
+  docker:
+
+    name: Build Docker Image
+
+    runs-on: ubuntu-latest
+
+    needs:
+      - test
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+
+      - name: Set up Docker Buildx
+
+        uses: docker/setup-buildx-action@v3
+
+
+      - name: Build Docker image
+
+        uses: docker/build-push-action@v6
+
+        with:
+
+          context: .
+
+          push: false
+
+          tags: churn-prediction:test
